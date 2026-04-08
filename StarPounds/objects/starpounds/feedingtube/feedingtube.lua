@@ -45,13 +45,13 @@ end
 function update(dt)
   promises:update()
   -- Player/NPC detection. Resets the target if nobody lounging.
-  if self.feedTarget and not self.startedLounging then
-    if not world.loungeableOccupied(entity.id()) then
-      self.feedTarget = nil
-      self.feedAmount = 0
-    end
-  else
-    self.startedLounging = false
+  if not world.entityExists(self.feedTarget or 0) then
+    self.feedTarget, self.waitForTarget = nil
+	 self.feedAmount = 0
+  elseif self.waitForTarget then
+    self.waitForTarget()
+  elseif not world.loungeableOccupied(entity.id()) then
+    self.feedTarget, self.waitForTarget = nil
   end
   -- Main loop.
   if self.feedTarget then
@@ -128,6 +128,14 @@ function onInteraction(args)
     self.feedTarget = args.sourceId
     self.feedAmount = 0
     self.startedLounging = true
+    self.waitForTarget = coroutine.wrap(function()
+      -- 1 tick after interaction, send a (dummy, unhandled) promise
+      local promise = world.sendEntityMessage(self.feedTarget, "starpounds.feedingtube.lounging")
+      -- the response should take roughly as long to receive as the client's lounging notification
+      while not promise:finished() do coroutine.yield() end
+      -- the loungeableOccupied check will be performed on the next tick
+      self.waitForTarget = nil
+    end)
     animator.setAnimationRate(1)
     setDrinkSpeed()
     -- Connect.
