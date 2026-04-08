@@ -127,6 +127,7 @@ function onInteraction(args)
   if not self.feedTarget then
     self.feedTarget = args.sourceId
     self.feedAmount = 0
+    self.liquidAmount = 1
     self.startedLounging = true
     self.waitForTarget = coroutine.wrap(function()
       -- 1 tick after interaction, send a (dummy, unhandled) promise
@@ -192,11 +193,13 @@ function collectLiquid()
 end
 
 function setDrinkSpeed()
-  self.liquidAmount = 1
   if self.feedTarget then
+    local recipient = self.feedTarget
     promises:add(world.sendEntityMessage(self.feedTarget, "starPounds.stats.get", "drinkStrength"), function(level)
-      self.liquidAmount = math.max(level, 1)
-      animator.setAnimationRate(1 + (level - 1) * 0.125)
+      if recipient == self.feedTarget then
+        self.liquidAmount = math.max(level, 1)
+        animator.setAnimationRate(1 + (level - 1) * 0.125)
+      end
     end)
   end
 end
